@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>বাংলাদেশ সময় (BST)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Hind Siliguri', 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f8fafc 100%);
+            min-height: 100vh;
+        }
+        .clock-card {
+            background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 55%, #38bdf8 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-start py-6 px-4 text-slate-800 antialiased">
+
+    <!-- Toast Notification Container (Replaces alert/confirm) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 left-5 sm:left-auto sm:w-80 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Main App Container -->
+    <main class="w-full max-w-md space-y-5">
+        <div class="clock-card rounded-3xl p-7 text-white shadow-xl relative overflow-hidden text-center">
+
+            <div class="relative z-10">
+                <!-- Live Badge -->
+                <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-semibold mb-5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>বাংলাদেশ সময় (BST • UTC+6)</span>
+                </div>
+
+                <!-- Live Digital Clock -->
+                <div id="bd-clock" class="text-4xl sm:text-5xl font-bold font-mono tracking-tight drop-shadow-sm">
+                    --:--:-- --
+                </div>
+
+                <!-- Bengali Date -->
+                <div id="bd-date" class="text-sm sm:text-base text-sky-100 mt-3 font-medium">
+                    তারিখ লোড হচ্ছে...
+                </div>
+            </div>
+        </div>
+
+        <!-- Set New Alarm Card -->
+        <section class="bg-white/90 backdrop-blur-md rounded-3xl p-6 shadow-lg border border-sky-100">
+            <div class="flex items-center gap-2.5 mb-4">
+                <div class="w-9 h-9 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center">
+                    <i class="fa-solid fa-bell"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800 leading-tight">নতুন অ্যালার্ম সেট করুন</h2>
+                    <p class="text-xs text-slate-500">নির্ধারিত সময়ে টেলিগ্রামে অটোমেটিক মেসেজ যাবে</p>
+                </div>
+            </div>
+
+            <form id="alarm-form" class="space-y-4">
+                <!-- Time Picker -->
+                <div>
+                    <label for="alarm-time" class="block text-sm font-semibold text-slate-700 mb-1.5">
+                        সময় নির্বাচন করুন (বাংলাদেশ সময়)
+                    </label>
+                    <input
+                        type="time"
+                        id="alarm-time"
+                        required
+                        class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-sky-500 focus:ring-2 focus:ring-sky-200 outline-none text-lg font-mono font-semibold text-slate-800 transition"
+                    >
+                </div>
+
+                <!-- Custom Message Input -->
+                <div>
+                    <label for="alarm-message" class="block text-sm font-semibold text-slate-700 mb-1.5">
+                        টেলিগ্রাম মেসেজ
+                    </label>
+                    <input
+                        type="text"
+                        id="alarm-message"
+                        placeholder="যেমন: 💧 পানি খাওয়ার সময় হয়েছে!"
+                        value="💧 পানি খাওয়ার সময় হয়েছে! এক গ্লাস পানি খেয়ে নিন।"
+                        required
+                        class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-sky-500 focus:ring-2 focus:ring-sky-200 outline-none text-sm text-slate-800 transition"
+                    >
+                </div>
+
+                <!-- Add Alarm Button -->
+                <button
+                    type="submit"
+                    class="w-full py-3.5 px-5 rounded-2xl bg-sky-600 hover:bg-sky-700 active:scale-[0.99] text-white font-semibold shadow-md shadow-sky-200 transition flex items-center justify-center gap-2"
+                >
+                    <i class="fa-solid fa-plus-circle"></i>
+                    <span>অ্যালার্ম যোগ করুন</span>
+                </button>
+            </form>
+        </section>
+
+        <!-- Alarm List Card -->
+        <section class="bg-white/90 backdrop-blur-md rounded-3xl p-6 shadow-lg border border-sky-100">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-regular fa-clock text-sky-600"></i>
+                    <span>সেট করা অ্যালার্মসমূহ</span>
+                </h2>
+                <span id="alarm-count" class="text-xs font-semibold bg-sky-100 text-sky-700 px-2.5 py-1 rounded-full">
+                    ০ টি
+                </span>
+            </div>
+
+            <!-- Dynamic Alarm Items -->
+            <div id="alarm-list" class="space-y-3">
+                <!-- Alarms will be rendered here -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="text-center py-6 text-slate-400">
+                <i class="fa-regular fa-bell-slash text-3xl mb-2 opacity-60"></i>
+                <p class="text-sm">এখনো কোনো অ্যালার্ম সেট করা হয়নি</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Live Bangladesh Clock & Telegram Alarm Script -->
+    <script>
+        // Telegram Bot Configuration (Pre-configured)
+        const TELEGRAM_BOT_TOKEN = '9225097785:AAGX9V6CZofRUg6CzjwxfcU4djK6GQAyw-0';
+        const TELEGRAM_CHAT_ID = '8839977081';
+        const STORAGE_KEY = 'bd_telegram_alarms_v1';
+
+        // Application State
+        let alarms = [];
+
+        /**
+         * Displays a non-blocking toast notification.
+         * @param {string} message - Message to show.
+         * @param {'success'|'error'|'info'} type - Visual style of toast.
+         */
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const colors = {
+                success: 'bg-emerald-600 text-white',
+                error: 'bg-rose-600 text-white',
+                info: 'bg-slate-800 text-white'
+            };
+
+            const icons = {
+                success: 'fa-circle-check',
+                error: 'fa-circle-exclamation',
+                info: 'fa-circle-info'
+            };
+
+            toast.className = `${colors[type] || colors.info} px-4 py-3 rounded-2xl shadow-lg flex items-center gap-2.5 text-sm font-medium pointer-events-auto transition-all duration-300 translate-y-2 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i><span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            // Trigger entrance animation
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            // Auto-remove after 3.5 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        /**
+         * Loads saved alarms from localStorage safely.
+         */
+        function loadAlarms() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                alarms = raw ? JSON.parse(raw) : [];
+            } catch (err) {
+                console.error('Failed to load alarms:', err);
+                alarms = [];
+            }
+        }
+
+        /**
+         * Saves current alarms array to localStorage safely.
+         */
+        function saveAlarms() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(alarms));
+            } catch (err) {
+                console.error('Failed to save alarms:', err);
+            }
+        }
+
+        /**
+         * Converts 24-hour "HH:MM" time string to 12-hour "hh:mm AM/PM" display format.
+         * @param {string} time24
+         * @returns {string}
+         */
+        function formatTime12Hour(time24) {
+            const [hourStr, minute] = time24.split(':');
+            let hour = parseInt(hourStr, 10);
+            const period = hour >= 12 ? 'PM' : 'AM';
+            hour = hour % 12 || 12;
+            return `${String(hour).padStart(2, '0')}:${minute} ${period}`;
+        }
+
+        /**
+         * Returns current Bangladesh time parts (HH:MM in 24h and YYYY-MM-DD date key).
+         */
+        function getBangladeshTimeParts(dateObj) {
+            const partsFormatter = new Intl.DateTimeFormat('en-GB', {
+                timeZone: 'Asia/Dhaka',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+
+            const parts = {};
+            for (const p of partsFormatter.formatToParts(dateObj)) {
+                parts[p.type] = p.value;
+            }
+
+            // Handle midnight edge case where some browsers return "24"
+            const hour = parts.hour === '24' ? '00' : parts.hour;
+            return {
+                time24: `${hour}:${parts.minute}`,
+                dateKey: `${parts.year}-${parts.month}-${parts.day}`
+            };
+        }
+
+        /**
+         * Sends a text message to the configured Telegram Bot and Chat ID.
+         * @param {string} text - Message content.
+         * @param {boolean} isTest - Whether triggered manually for testing.
+         */
+        async function sendTelegramMessage(text, isTest = false) {
+            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: TELEGRAM_CHAT_ID,
+                        text: text
+                    })
+                });
+
+                const data = await response.json();
+                if (data.ok) {
+                    showToast(isTest ? 'টেস্ট মেসেজ টেলিগ্রামে পাঠানো হয়েছে!' : 'অ্যালার্ম মেসেজ টেলিগ্রামে পাঠানো হয়েছে!', 'success');
+                    return true;
+                } else {
+                    console.error('Telegram API error:', data);
+                    showToast('টেলিগ্রামে মেসেজ যায়নি! বটে /start দেওয়া আছে কি না চেক করুন।', 'error');
+                    return false;
+                }
+            } catch (error) {
+                console.error('Network error sending Telegram message:', error);
+                showToast('ইন্টারনেট বা নেটওয়ার্ক সমস্যার কারণে মেসেজ যায়নি।', 'error');
+                return false;
+            }
+        }
+
+        /**
+         * Renders the list of configured alarms in the UI.
+         */
+        function renderAlarms() {
+            const listEl = document.getElementById('alarm-list');
+            const emptyEl = document.getElementById('empty-state');
+            const countEl = document.getElementById('alarm-count');
+
+            // Sort alarms chronologically
+            alarms.sort((a, b) => a.time.localeCompare(b.time));
+
+            const { dateKey: todayKey } = getBangladeshTimeParts(new Date());
+            countEl.textContent = `${alarms.length} টি`;
+
+            if (alarms.length === 0) {
+                listEl.innerHTML = '';
+                emptyEl.classList.remove('hidden');
+                return;
+            }
+
+            emptyEl.classList.add('hidden');
+            listEl.innerHTML = alarms.map(alarm => {
+                const sentToday = alarm.lastSentDate === todayKey;
+                return `
+                    <div class="p-4 rounded-2xl border ${alarm.enabled ? 'border-sky-100 bg-sky-50/50' : 'border-slate-100 bg-slate-50 opacity-70'} flex items-center justify-between gap-3 transition">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-lg font-bold font-mono ${alarm.enabled ? 'text-slate-800' : 'text-slate-400'}">
+                                    ${formatTime12Hour(alarm.time)}
+                                </span>
+                                ${sentToday ? `
+                                    <span class="text-[11px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                                        <i class="fa-solid fa-check mr-0.5"></i> আজ পাঠানো হয়েছে
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <p class="text-xs text-slate-600 truncate mt-1" title="${alarm.message.replace(/"/g, '&quot;')}">
+                                ${alarm.message}
+                            </p>
+                        </div>
+
+                        <div class="flex items-center gap-2 shrink-0">
+                            <!-- Test Send Button -->
+                            <button
+                                type="button"
+                                onclick="testAlarm('${alarm.id}')"
+                                title="এখনই টেস্ট মেসেজ পাঠান"
+                                class="w-9 h-9 rounded-xl bg-white border border-slate-200 text-sky-600 hover:bg-sky-50 flex items-center justify-center transition"
+                            >
+                                <i class="fa-solid fa-paper-plane text-xs"></i>
+                            </button>
+
+                            <!-- On/Off Toggle -->
+                            <button
+                                type="button"
+                                onclick="toggleAlarm('${alarm.id}')"
+                                title="${alarm.enabled ? 'বন্ধ করুন' : 'চালু করুন'}"
+                                class="w-11 h-6 rounded-full transition-colors relative ${alarm.enabled ? 'bg-sky-500' : 'bg-slate-300'}"
+                            >
+                                <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${alarm.enabled ? 'translate-x-5' : 'translate-x-0'}"></span>
+                            </button>
+
+                            <!-- Delete Button -->
+                            <button
+                                type="button"
+                                onclick="deleteAlarm('${alarm.id}')"
+                                title="ডিলিট করুন"
+                                class="w-9 h-9 rounded-xl bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 flex items-center justify-center transition"
+                            >
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        /**
+         * Toggles an alarm's enabled state.
+         */
+        window.toggleAlarm = function(id) {
+            const target = alarms.find(a => a.id === id);
+            if (!target) return;
+            target.enabled = !target.enabled;
+            saveAlarms();
+            renderAlarms();
+            showToast(target.enabled ? 'অ্যালার্ম চালু করা হয়েছে' : 'অ্যালার্ম বন্ধ করা হয়েছে', 'info');
+        };
+
+        /**
+         * Deletes an alarm by ID.
+         */
+        window.deleteAlarm = function(id) {
+            alarms = alarms.filter(a => a.id !== id);
+            saveAlarms();
+            renderAlarms();
+            showToast('অ্যালার্ম ডিলিট করা হয়েছে', 'info');
+        };
+
+        /**
+         * Manually triggers a Telegram message for a specific alarm to test it.
+         */
+        window.testAlarm = function(id) {
+            const target = alarms.find(a => a.id === id);
+            if (!target) return;
+            sendTelegramMessage(`⏰ [টেস্ট - ${formatTime12Hour(target.time)}]\n${target.message}`, true);
+        };
+
+        /**
+         * Checks if any enabled alarm matches the current Bangladesh time and triggers it once per day.
+         */
+        function checkAlarms(now) {
+            const { time24, dateKey } = getBangladeshTimeParts(now);
+            let updated = false;
+
+            alarms.forEach(alarm => {
+                if (alarm.enabled && alarm.time === time24 && alarm.lastSentDate !== dateKey) {
+                    // Mark as sent immediately to prevent duplicate sends within the same minute
+                    alarm.lastSentDate = dateKey;
+                    updated = true;
+
+                    const fullMessage = `⏰ সময়: ${formatTime12Hour(alarm.time)} (বাংলাদেশ সময়)\n\n${alarm.message}`;
+                    sendTelegramMessage(fullMessage, false);
+                }
+            });
+
+            if (updated) {
+                saveAlarms();
+                renderAlarms();
+            }
+        }
+
+        /**
+         * Fetches and updates the current time and date in Bangladesh Timezone (Asia/Dhaka).
+         */
+        function updateBangladeshTime() {
+            const now = new Date();
+
+            // Format 12-hour clock in Asia/Dhaka timezone
+            const timeFormatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Dhaka',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+
+            // Format full date in Bengali
+            const dateFormatter = new Intl.DateTimeFormat('bn-BD', {
+                timeZone: 'Asia/Dhaka',
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            document.getElementById('bd-clock').textContent = timeFormatter.format(now);
+            document.getElementById('bd-date').textContent = dateFormatter.format(now);
+
+            // Check scheduled alarms every second
+            checkAlarms(now);
+        }
+
+        // Initialize app on load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadAlarms();
+            renderAlarms();
+            updateBangladeshTime();
+            setInterval(updateBangladeshTime, 1000);
+
+            // Handle Add Alarm Form Submit
+            document.getElementById('alarm-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const timeInput = document.getElementById('alarm-time');
+                const messageInput = document.getElementById('alarm-message');
+
+                const timeValue = timeInput.value;
+                const messageValue = messageInput.value.trim();
+
+                if (!timeValue || !messageValue) {
+                    showToast('দয়া করে সময় এবং মেসেজ সঠিকভাবে লিখুন।', 'error');
+                    return;
+                }
+
+                const newAlarm = {
+                    id: Date.now().toString(),
+                    time: timeValue,
+                    message: messageValue,
+                    enabled: true,
+                    lastSentDate: null
+                };
+
+                alarms.push(newAlarm);
+                saveAlarms();
+                renderAlarms();
+                timeInput.value = '';
+                showToast(`${formatTime12Hour(timeValue)} এর জন্য অ্যালার্ম সেট হয়েছে!`, 'success');
+            });
+        });
+    </script>
+</body>
+</html>
